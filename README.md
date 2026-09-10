@@ -1,5 +1,9 @@
 # LIZARD
 
+<p align="center">
+    <img src="img/lizard.png" alt="LIZARD programming language banner" width="420">
+</p>
+
 LIZARD is a native Rust-based programming language focused on simple syntax and fast startup.
 
 Current milestone: the first working interpreter for simple statements, variables, arithmetic, and `if` blocks.
