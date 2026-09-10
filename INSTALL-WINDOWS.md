@@ -11,25 +11,25 @@ that directory to the user PATH.
 PowerShell:
 
 ```powershell
-$env:LIZARD_RELEASE_BASE_URL = "https://github.com/OWNER/REPOSITORY/releases/latest/download"
+$env:LIZARD_RELEASE_BASE_URL = "https://github.com/surjolive/LIZARD/releases/latest/download"
 .\install.ps1
 ```
 
 Command Prompt:
 
 ```bat
-set LIZARD_RELEASE_BASE_URL=https://github.com/OWNER/REPOSITORY/releases/latest/download
+set LIZARD_RELEASE_BASE_URL=https://github.com/surjolive/LIZARD/releases/latest/download
 install.bat
 ```
 
 Direct URL form after the repository is published:
 
 ```powershell
-$env:LIZARD_RELEASE_BASE_URL = "https://github.com/OWNER/REPOSITORY/releases/latest/download"
-irm https://raw.githubusercontent.com/OWNER/REPOSITORY/main/install.ps1 | iex
+$env:LIZARD_RELEASE_BASE_URL = "https://github.com/surjolive/LIZARD/releases/latest/download"
+irm https://raw.githubusercontent.com/surjolive/LIZARD/master/install.ps1 | iex
 ```
 
-Replace `OWNER/REPOSITORY` with the real GitHub path.
+The published repository is [surjolive/LIZARD](https://github.com/surjolive/LIZARD).
 
 For a per-user installation, add that directory to the user PATH, then open a new PowerShell or CMD window:
 

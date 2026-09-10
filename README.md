@@ -33,14 +33,14 @@ The installer downloads `lz.exe` and `lizard.exe` into
 From a cloned project directory:
 
 ```powershell
-$env:LIZARD_RELEASE_BASE_URL = "https://github.com/OWNER/REPOSITORY/releases/latest/download"
+$env:LIZARD_RELEASE_BASE_URL = "https://github.com/surjolive/LIZARD/releases/latest/download"
 .\install.ps1
 ```
 
 From Command Prompt:
 
 ```bat
-set LIZARD_RELEASE_BASE_URL=https://github.com/OWNER/REPOSITORY/releases/latest/download
+set LIZARD_RELEASE_BASE_URL=https://github.com/surjolive/LIZARD/releases/latest/download
 install.bat
 ```
 
@@ -48,20 +48,18 @@ After publishing this repository, direct URL installation works from
 PowerShell:
 
 ```powershell
-$env:LIZARD_RELEASE_BASE_URL = "https://github.com/OWNER/REPOSITORY/releases/latest/download"
-irm https://raw.githubusercontent.com/OWNER/REPOSITORY/main/install.ps1 | iex
+$env:LIZARD_RELEASE_BASE_URL = "https://github.com/surjolive/LIZARD/releases/latest/download"
+irm https://raw.githubusercontent.com/surjolive/LIZARD/master/install.ps1 | iex
 ```
 
 From CMD or any shell with `curl` and PowerShell:
 
 ```bat
-set LIZARD_RELEASE_BASE_URL=https://github.com/OWNER/REPOSITORY/releases/latest/download
-curl.exe -fsSL https://raw.githubusercontent.com/OWNER/REPOSITORY/main/install.ps1 | powershell.exe -NoProfile -ExecutionPolicy Bypass -Command -
+set LIZARD_RELEASE_BASE_URL=https://github.com/surjolive/LIZARD/releases/latest/download
+curl.exe -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.ps1 | powershell.exe -NoProfile -ExecutionPolicy Bypass -Command -
 ```
 
-Replace `OWNER/REPOSITORY` with the published GitHub repository path. This
-workspace has no configured Git remote yet, so the public URL cannot be filled
-in automatically.
+The published repository is [surjolive/LIZARD](https://github.com/surjolive/LIZARD).
 
 ## Windows release build
 
