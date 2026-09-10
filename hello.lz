@@ -1,0 +1,9 @@
+say "Hello World"
+
+x = 10
+y = 20
+
+say x + y
+
+if x < y
+    say "LIZARD is simple and fast"

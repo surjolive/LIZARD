@@ -1,0 +1,20 @@
+{
+  "scopeName": "source.lizard",
+  "name": "LIZARD",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#functions" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": { "patterns": [{ "name": "comment.line.number-sign.lizard", "match": "#.*$" }] },
+    "strings": { "patterns": [{ "name": "string.quoted.double.lizard", "begin": "\"", "end": "\"" }] },
+    "numbers": { "patterns": [{ "name": "constant.numeric.lizard", "match": "\\b\\d+(?:\\.\\d+)?\\b" }] },
+    "keywords": { "patterns": [{ "name": "keyword.control.lizard", "match": "\\b(?:if|else|elif|while|for|each|repeat|in|fn|return|break|continue|global|local|const|type|class|import|from|as|match|case|try|catch|finally|throw|async|await|end)\\b" }, { "name": "constant.language.lizard", "match": "\\b(?:true|false|null)\\b" }] },
+    "functions": { "patterns": [{ "name": "entity.name.function.lizard", "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()" }] },
+    "operators": { "patterns": [{ "name": "keyword.operator.lizard", "match": "==|!=|<=|>=|[+*/%<>=-]" }] }
+  }
+}

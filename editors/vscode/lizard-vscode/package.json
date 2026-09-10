@@ -1,0 +1,53 @@
+{
+  "name": "lizard-language-support",
+  "displayName": "LIZARD Language Support",
+  "description": "Language support for the native LIZARD programming language.",
+  "version": "0.1.0",
+  "publisher": "lizard-lang",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Debuggers"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [{
+      "id": "lizard",
+      "aliases": ["LIZARD", "lizard"],
+      "extensions": [".lz"],
+      "configuration": "./language-configuration.json",
+      "icon": { "light": "./icons/lizard.svg", "dark": "./icons/lizard.svg" }
+    }],
+    "grammars": [{
+      "language": "lizard",
+      "scopeName": "source.lizard",
+      "path": "./syntaxes/lizard.tmLanguage.json"
+    }],
+    "snippets": [{
+      "language": "lizard",
+      "path": "./snippets/lizard.json"
+    }],
+    "commands": [
+      { "command": "lizard.runFile", "title": "LIZARD: Run File" },
+      { "command": "lizard.checkFile", "title": "LIZARD: Check File" },
+      { "command": "lizard.formatFile", "title": "LIZARD: Format File" }
+    ],
+    "configuration": {
+      "title": "LIZARD",
+      "properties": {
+        "lizard.path": { "type": "string", "default": "lizard", "description": "Path to the LIZARD executable." },
+        "lizard.formatOnSave": { "type": "boolean", "default": false, "description": "Format LIZARD files on save." }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "package": "npm run compile && npx vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.24.0"
+  }
+}
