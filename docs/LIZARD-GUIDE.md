@@ -81,6 +81,9 @@ lz fmt hello.lz            Print formatted source
 lz fmt --write hello.lz   Format and overwrite the source file
 lz test                    Show the development test command
 lz repl                    Start the REPL
+lz update --check          Check the latest release without changing files
+lz update                  Install the latest release
+lz upgrade                 Alias for update
 lz new MyProject           Create a project skeleton
 lz doctor                 Diagnose the current installation
 lz -e "say 10 + 20"        Execute inline LIZARD source
@@ -90,7 +93,26 @@ lz --help                 Print command help
 
 `lizard` accepts the same commands as `lz`.
 
-## 5. Version and Help
+## 6. Update and Upgrade
+
+Check for the latest release without changing the installation:
+
+```powershell
+lz update --check
+```
+
+Update the installed runtime:
+
+```powershell
+lz update
+```
+
+`lz upgrade` is an alias for `lz update`. The updater starts the platform
+installer in the background so the running executable can exit before its files
+are replaced. Open a new terminal after the command and verify with
+`lz --version`. Linux and macOS use `install.sh`; Windows uses `install.ps1`.
+
+## 7. Version and Help
 
 ```powershell
 lz --version
@@ -99,7 +121,7 @@ lz --help
 
 Version information comes from the Cargo package version, so the Rust package and CLI use one version source.
 
-## 6. REPL
+## 8. REPL
 
 Start the REPL with either command:
 
@@ -125,7 +147,7 @@ Surjo
 
 Use `exit` or `quit` to leave the REPL.
 
-## 7. Language Syntax
+## 9. Language Syntax
 
 ### Output and variables
 
@@ -180,7 +202,7 @@ end
 
 Supported core values include numbers, text, booleans, null, lists, maps, and functions.
 
-## 8. Native Built-ins
+## 10. Native Built-ins
 
 The runtime provides these native functions:
 
@@ -248,7 +270,7 @@ animate("Loading", 3, 100)
 print("Done")
 ```
 
-## 9. Checking and Formatting
+## 11. Checking and Formatting
 
 Check source without running it:
 
@@ -270,7 +292,7 @@ lz fmt --write hello.lz
 
 The formatter uses four spaces for block indentation.
 
-## 10. Native Build
+## 12. Native Build
 
 Build the Rust CLI in release mode with the PowerShell script:
 
@@ -315,7 +337,7 @@ Run the generated application from its output directory:
 
 The generated executable uses its adjacent `.lz` file when launched without arguments. Keep that source file beside the executable.
 
-## 11. Install On Windows
+## 13. Install On Windows
 
 After a successful release build, add the release directory to the user PATH:
 
@@ -347,7 +369,7 @@ curl -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh 
 The installer places both commands in `~/.local/bin`. Set
 `LIZARD_INSTALL_DIR` to use a different directory.
 
-## 12. Project Creation
+## 14. Project Creation
 
 Create a project skeleton:
 
@@ -369,7 +391,7 @@ MyProject/
 
 `lizard.json` currently uses `src/main.lz` as the project entry point.
 
-## 13. Doctor
+## 15. Doctor
 
 Run:
 
@@ -379,7 +401,7 @@ lz doctor
 
 The command reports the current executable, native runtime, version, and operating system. It is useful after changing PATH or installing a release build.
 
-## 14. VS Code Support
+## 16. VS Code Support
 
 The VS Code package is located at:
 
@@ -414,7 +436,7 @@ Configure a custom executable path in VS Code settings:
 }
 ```
 
-## 15. Tests and Validation
+## 17. Tests and Validation
 
 Format and compile the Rust project:
 
@@ -441,7 +463,7 @@ The tests cover:
 - native build output
 - extended built-ins and terminal animation
 
-## 16. Common Problems
+## 18. Common Problems
 
 ### `lz.exe` does not exist
 
@@ -473,7 +495,7 @@ The release directory is not on PATH, or the terminal was opened before PATH was
 
 Rust source compilation can succeed while executable linking fails. Install a compatible native linker, then rerun `cargo test`.
 
-## 17. Current Scope
+## 19. Current Scope
 
 The current implementation is a real native interpreter and CLI with a growing
 standard library, terminal animation, native Windows builds, and automated

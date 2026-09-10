@@ -4,7 +4,7 @@ use std::env;
 use std::fmt;
 use std::fs;
 use std::io::Write;
-use std::process;
+use std::process::{self, Command};
 use std::thread;
 use std::time::Duration;
 
@@ -1016,36 +1016,9 @@ fn invoke_function(
 
 fn install_builtins(scope: &mut Scope) {
     for name in [
-        "size",
-        "typeOf",
-        "toText",
-        "toNumber",
-        "lower",
-        "upper",
-        "trim",
-        "contains",
-        "split",
-        "join",
-        "first",
-        "last",
-        "sum",
-        "range",
-        "push",
-        "pop",
-        "reverse",
-        "slice",
-        "clamp",
-        "animate",
-        "aro",
-        "print",
-        "echo",
-        "log",
-        "info",
-        "abs",
-        "floor",
-        "ceil",
-        "round",
-        "min",
+        "size", "typeOf", "toText", "toNumber", "lower", "upper", "trim", "contains", "split",
+        "join", "first", "last", "sum", "range", "push", "pop", "reverse", "slice", "clamp",
+        "animate", "aro", "print", "echo", "log", "info", "abs", "floor", "ceil", "round", "min",
         "max",
     ] {
         scope
@@ -1155,16 +1128,30 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
         "first" => {
             require_args(name, &args, 1)?;
             match &args[0] {
-                Value::List(values) => values.first().cloned().ok_or_else(|| "first expects a non-empty list".to_string()),
-                Value::Text(value) => value.chars().next().map(|ch| Value::Text(ch.to_string())).ok_or_else(|| "first expects a non-empty text value".to_string()),
+                Value::List(values) => values
+                    .first()
+                    .cloned()
+                    .ok_or_else(|| "first expects a non-empty list".to_string()),
+                Value::Text(value) => value
+                    .chars()
+                    .next()
+                    .map(|ch| Value::Text(ch.to_string()))
+                    .ok_or_else(|| "first expects a non-empty text value".to_string()),
                 _ => Err("first expects a list or text".to_string()),
             }
         }
         "last" => {
             require_args(name, &args, 1)?;
             match &args[0] {
-                Value::List(values) => values.last().cloned().ok_or_else(|| "last expects a non-empty list".to_string()),
-                Value::Text(value) => value.chars().next_back().map(|ch| Value::Text(ch.to_string())).ok_or_else(|| "last expects a non-empty text value".to_string()),
+                Value::List(values) => values
+                    .last()
+                    .cloned()
+                    .ok_or_else(|| "last expects a non-empty list".to_string()),
+                Value::Text(value) => value
+                    .chars()
+                    .next_back()
+                    .map(|ch| Value::Text(ch.to_string()))
+                    .ok_or_else(|| "last expects a non-empty text value".to_string()),
                 _ => Err("last expects a list or text".to_string()),
             }
         }
@@ -1172,10 +1159,13 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             require_args(name, &args, 1)?;
             match &args[0] {
                 Value::List(values) => {
-                    let total = values.iter().try_fold(0.0_f64, |acc, value| -> Result<f64, String> {
-                        let number = number_arg(name, value)?;
-                        Ok::<f64, String>(acc + number)
-                    })?;
+                    let total =
+                        values
+                            .iter()
+                            .try_fold(0.0_f64, |acc, value| -> Result<f64, String> {
+                                let number = number_arg(name, value)?;
+                                Ok::<f64, String>(acc + number)
+                            })?;
                     Ok(Value::Number(total))
                 }
                 _ => Err("sum expects a list of numbers".to_string()),
@@ -1252,7 +1242,11 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             require_args(name, &args, 3)?;
             let message = match &args[0] {
                 Value::Text(value) => value,
-                _ => return Err("animate expects text, frame count, and delay in milliseconds".to_string()),
+                _ => {
+                    return Err(
+                        "animate expects text, frame count, and delay in milliseconds".to_string(),
+                    );
+                }
             };
             let frames = index_arg(name, &args[1])?;
             let delay = index_arg(name, &args[2])?;
@@ -1261,7 +1255,8 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             }
             let mut stdout = std::io::stdout();
             for frame in 1..=frames {
-                write!(stdout, "\r{message} {frame}/{frames}").map_err(|error| error.to_string())?;
+                write!(stdout, "\r{message} {frame}/{frames}")
+                    .map_err(|error| error.to_string())?;
                 stdout.flush().map_err(|error| error.to_string())?;
                 if delay > 0 {
                     thread::sleep(Duration::from_millis(delay as u64));
@@ -1588,6 +1583,11 @@ fn main() {
         return;
     }
 
+    if matches!(args[0].as_str(), "update" | "upgrade") {
+        run_update(args.iter().any(|arg| arg == "--check"));
+        return;
+    }
+
     if args[0] == "new" {
         let name = args
             .get(1)
@@ -1842,6 +1842,54 @@ fn run_repl() {
     }
 }
 
+fn run_update(check_only: bool) {
+    let release_url = "https://github.com/surjolive/LIZARD/releases/latest";
+    println!("LIZARD update check");
+    println!("Current version: {}", env!("CARGO_PKG_VERSION"));
+    println!("Latest release: {release_url}");
+
+    if check_only {
+        println!("Run `lz update` to install the latest release.");
+        return;
+    }
+
+    let installer_url = if env::consts::OS == "windows" {
+        "https://raw.githubusercontent.com/surjolive/LIZARD/master/install.ps1"
+    } else {
+        "https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh"
+    };
+    let started = if env::consts::OS == "windows" {
+        let command = format!(
+            "$path = Join-Path $env:TEMP 'lizard-update.ps1'; Invoke-WebRequest -UseBasicParsing -Uri '{installer_url}' -OutFile $path; Start-Sleep -Milliseconds 750; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path"
+        );
+        Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                &command,
+            ])
+            .spawn()
+            .is_ok()
+    } else {
+        let command = format!("sleep 1; curl -fsSL '{installer_url}' | sh");
+        Command::new("sh").args(["-c", &command]).spawn().is_ok()
+    };
+
+    if started {
+        println!(
+            "Update started. The installer will replace the binaries after this command exits."
+        );
+        println!("Open a new terminal and run `lz --version` when it completes.");
+    } else {
+        eprintln!(
+            "Could not start the updater. Download the latest release manually from {release_url}."
+        );
+        process::exit(4);
+    }
+}
+
 fn build_native(source_path: &str, requested_output: Option<&str>) {
     let current_exe =
         env::current_exe().unwrap_or_else(|error| file_error("current executable", error));
@@ -1912,7 +1960,7 @@ fn run_doctor() {
 
 fn print_help() {
     println!(
-        "LIZARD Programming Language\n\nUsage:\n    lz [command] [file]\n\nCommands:\n    run       Run a LIZARD program\n    build     Build a native executable\n    repl      Start the REPL\n    check     Check source code\n    fmt       Format source code\n    test      Run project tests\n    new       Create a project\n    doctor    Diagnose installation\n\nOptions:\n    --version\n    --help\n    -e <code>"
+        "LIZARD Programming Language\n\nUsage:\n    lz [command] [file]\n\nCommands:\n    run       Run a LIZARD program\n    build     Build a native executable\n    repl      Start the REPL\n    update    Update LIZARD to the latest release\n    upgrade   Alias for update\n    check     Check source code\n    fmt       Format source code\n    test      Run project tests\n    new       Create a project\n    doctor    Diagnose installation\n\nOptions:\n    --version\n    --help\n    -e <code>"
     );
 }
 

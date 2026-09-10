@@ -29,6 +29,7 @@ cargo run -- -e "say 10 + 20"
 cargo run -- build hello.lz --output hello.exe
 cargo run -- doctor
 cargo run -- repl
+cargo run -- update --check
 ```
 
 The VS Code language package is in `editors/vscode/lizard-vscode`. It registers
@@ -46,6 +47,7 @@ through the native LIZARD CLI.
 - Numeric helpers including `abs`, `min`, `max`, and `clamp`
 - Terminal progress animation with `animate(message, frames, delayMs)`
 - REPL, formatter, checker, project creation, and native build commands
+- `update` and `upgrade` commands with safe `--check` mode
 - Release downloads for Windows, Linux, and macOS
 
 For the complete installation, CLI, language, build, testing, and editor guide,

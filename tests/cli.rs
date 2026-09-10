@@ -42,6 +42,20 @@ fn cli_evaluates_inline_source() {
 }
 
 #[test]
+fn update_and_upgrade_check_commands_are_available() {
+    for command in ["update", "upgrade"] {
+        let output = Command::new(lizard_binary())
+            .args([command, "--check"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        assert!(stdout.contains("LIZARD update check"));
+        assert!(stdout.contains("releases/latest"));
+    }
+}
+
+#[test]
 fn say_supports_function_style_syntax() {
     fs::create_dir_all("tests/data").unwrap();
     let path = temp_file("say_call");
@@ -125,7 +139,11 @@ fn extended_builtin_helpers_work() {
     .unwrap();
 
     let output = Command::new(lizard_binary()).arg(&path).output().unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
         "lizard\nLIZARD\nhi\ntrue\nb\na-b-c\n10\n30\n10\n3\n"
@@ -140,8 +158,15 @@ fn friendly_output_helpers_work() {
     fs::write(&path, "say aro(\"hi\")\nsay print(\"there\")\n").unwrap();
 
     let output = Command::new(lizard_binary()).arg(&path).output().unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
-    assert_eq!(String::from_utf8(output.stdout).unwrap(), "hi\nhi\nthere\nthere\n");
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "hi\nhi\nthere\nthere\n"
+    );
     let _ = fs::remove_file(path);
 }
 
@@ -156,7 +181,11 @@ fn feature_helpers_and_animation_work() {
     .unwrap();
 
     let output = Command::new(lizard_binary()).arg(&path).output().unwrap();
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
         "3\n3\ndrazil\niza\n10\n\rgo 1/2\rgo 2/2\n"

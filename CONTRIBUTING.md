@@ -17,6 +17,8 @@ Thank you for helping improve LIZARD.
 
 - Keep cross-platform release changes compatible with Windows, Linux, and
   macOS. Release packaging is defined in `.github/workflows/release.yml`.
+- Keep `lz update`, `lz upgrade`, and their `--check` mode working when changing
+  release URLs or installer behavior.
 - Keep public syntax and builtin behavior documented in `README.md` or `docs/LIZARD-GUIDE.md`.
 - Document animation frame counts, delays, terminal behavior, and any platform
   limitations when adding animated output.
