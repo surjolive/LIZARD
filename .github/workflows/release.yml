@@ -1,0 +1,95 @@
+name: Release LIZARD
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: lizard-windows-x86_64.zip
+            executable_suffix: .exe
+          - name: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: lizard-linux-x86_64.tar.gz
+            executable_suffix: ''
+          - name: macos-x86_64
+            os: macos-13
+            target: x86_64-apple-darwin
+            archive: lizard-macos-x86_64.tar.gz
+            executable_suffix: ''
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build binaries
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Package Windows binaries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = "package/lizard-${{ matrix.name }}"
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/lz.exe" "$dir/lz.exe"
+          Copy-Item "target/${{ matrix.target }}/release/lizard.exe" "$dir/lizard.exe"
+          Compress-Archive -Path "$dir/*" -DestinationPath "${{ matrix.archive }}"
+
+      - name: Package Unix binaries
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          dir="package/lizard-${{ matrix.name }}"
+          mkdir -p "$dir"
+          cp "target/${{ matrix.target }}/release/lz" "$dir/lz"
+          cp "target/${{ matrix.target }}/release/lizard" "$dir/lizard"
+          chmod +x "$dir/lz" "$dir/lizard"
+          tar -czf "${{ matrix.archive }}" -C package "lizard-${{ matrix.name }}"
+
+      - name: Upload release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.archive }}
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create checksums
+        working-directory: dist
+        run: sha256sum * > SHA256SUMS
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" dist/* --repo "${GITHUB_REPOSITORY}" --title "LIZARD ${GITHUB_REF_NAME#v}" --generate-notes

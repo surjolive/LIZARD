@@ -68,6 +68,27 @@ curl.exe -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install
 
 The published repository is [surjolive/LIZARD](https://github.com/surjolive/LIZARD).
 
+## Download for Windows, Linux, and macOS
+
+Download the latest native release from the
+[GitHub Releases page](https://github.com/surjolive/LIZARD/releases/latest):
+
+| Platform | Download |
+| --- | --- |
+| Windows x86_64 | `lizard-windows-x86_64.zip` |
+| Linux x86_64 | `lizard-linux-x86_64.tar.gz` |
+| macOS Intel | `lizard-macos-x86_64.tar.gz` |
+
+On Linux or macOS, install the latest release with one command:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh | sh
+```
+
+The Unix installer places `lz` and `lizard` in `~/.local/bin`. Set
+`LIZARD_INSTALL_DIR` to choose another location. Releases are built
+automatically by GitHub Actions whenever a `v*` tag is pushed.
+
 ## Windows release build
 
 Run `build.bat` from Command Prompt or `./build.ps1` from PowerShell. The
