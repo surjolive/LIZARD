@@ -191,11 +191,30 @@ say ceil(4.2)                # 5
 say round(4.6)               # 5
 say min(8, 3, 6)             # 3
 say max(8, 3, 6)             # 8
+numbers = push([1, 2], 3)
+say pop(numbers)              # 3
+say reverse("lizard")         # drazil
+say slice("lizard", 1, 4)     # iza
+say clamp(15, 0, 10)           # 10
 ```
 
 `size` accepts text, lists, and maps. `toNumber` accepts a number or numeric
 text. Numeric functions report a clear runtime error when passed the wrong
 value type or argument count.
+
+`push` returns a new list with one value appended, while `pop` reads the last
+value without changing the original list. `reverse` supports text and lists.
+`slice` uses an inclusive start and exclusive end index.
+
+### Terminal animation
+
+```lz
+animate("Loading", 5, 100)
+```
+
+`animate` displays a terminal progress animation with a message, frame count,
+and delay in milliseconds. Use a delay of `0` for scripts and tests that need
+deterministic, immediate output.
 
 ### Friendly output
 

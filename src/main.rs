@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use std::env;
 use std::fmt;
 use std::fs;
+use std::io::Write;
 use std::process;
+use std::thread;
+use std::time::Duration;
 
 type Scope = HashMap<String, Value>;
 
@@ -1027,6 +1030,12 @@ fn install_builtins(scope: &mut Scope) {
         "last",
         "sum",
         "range",
+        "push",
+        "pop",
+        "reverse",
+        "slice",
+        "clamp",
+        "animate",
         "aro",
         "print",
         "echo",
@@ -1172,6 +1181,95 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 _ => Err("sum expects a list of numbers".to_string()),
             }
         }
+        "push" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::List(values) => {
+                    let mut result = values.clone();
+                    result.push(args[1].clone());
+                    Ok(Value::List(result))
+                }
+                _ => Err("push expects a list and a value".to_string()),
+            }
+        }
+        "pop" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => values
+                    .last()
+                    .cloned()
+                    .ok_or_else(|| "pop expects a non-empty list".to_string()),
+                _ => Err("pop expects a list".to_string()),
+            }
+        }
+        "reverse" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::Text(value) => Ok(Value::Text(value.chars().rev().collect())),
+                Value::List(values) => {
+                    let mut result = values.clone();
+                    result.reverse();
+                    Ok(Value::List(result))
+                }
+                _ => Err("reverse expects text or a list".to_string()),
+            }
+        }
+        "slice" => {
+            require_args(name, &args, 3)?;
+            let start = index_arg(name, &args[1])?;
+            let end = index_arg(name, &args[2])?;
+            if start > end {
+                return Err("slice start cannot exceed end".to_string());
+            }
+            match &args[0] {
+                Value::Text(value) => {
+                    let chars: Vec<char> = value.chars().collect();
+                    if end > chars.len() {
+                        return Err("slice end is out of range".to_string());
+                    }
+                    Ok(Value::Text(chars[start..end].iter().collect()))
+                }
+                Value::List(values) => {
+                    if end > values.len() {
+                        return Err("slice end is out of range".to_string());
+                    }
+                    Ok(Value::List(values[start..end].to_vec()))
+                }
+                _ => Err("slice expects text or a list".to_string()),
+            }
+        }
+        "clamp" => {
+            require_args(name, &args, 3)?;
+            let value = number_arg(name, &args[0])?;
+            let minimum = number_arg(name, &args[1])?;
+            let maximum = number_arg(name, &args[2])?;
+            if minimum > maximum {
+                return Err("clamp minimum cannot exceed maximum".to_string());
+            }
+            Ok(Value::Number(value.clamp(minimum, maximum)))
+        }
+        "animate" => {
+            require_args(name, &args, 3)?;
+            let message = match &args[0] {
+                Value::Text(value) => value,
+                _ => return Err("animate expects text, frame count, and delay in milliseconds".to_string()),
+            };
+            let frames = index_arg(name, &args[1])?;
+            let delay = index_arg(name, &args[2])?;
+            if frames == 0 {
+                return Err("animate frame count must be greater than zero".to_string());
+            }
+            let mut stdout = std::io::stdout();
+            for frame in 1..=frames {
+                write!(stdout, "\r{message} {frame}/{frames}").map_err(|error| error.to_string())?;
+                stdout.flush().map_err(|error| error.to_string())?;
+                if delay > 0 {
+                    thread::sleep(Duration::from_millis(delay as u64));
+                }
+            }
+            writeln!(stdout).map_err(|error| error.to_string())?;
+            Ok(Value::Text(message.clone()))
+        }
         "aro" | "print" | "echo" | "log" | "info" => {
             require_args(name, &args, 1)?;
             let value = args[0].clone();
@@ -1245,6 +1343,14 @@ fn number_arg(name: &str, value: &Value) -> Result<f64, String> {
         Value::Number(value) => Ok(*value),
         _ => Err(format!("{name} expects numbers")),
     }
+}
+
+fn index_arg(name: &str, value: &Value) -> Result<usize, String> {
+    let number = number_arg(name, value)?;
+    if number < 0.0 || number.fract() != 0.0 {
+        return Err(format!("{name} expects whole-number indexes"));
+    }
+    Ok(number as usize)
 }
 
 fn interpolate_text(source: &str, scope: &Scope) -> Result<Value, String> {

@@ -146,6 +146,25 @@ fn friendly_output_helpers_work() {
 }
 
 #[test]
+fn feature_helpers_and_animation_work() {
+    fs::create_dir_all("tests/data").unwrap();
+    let path = temp_file("feature_helpers");
+    fs::write(
+        &path,
+        "numbers = push([1, 2], 3)\nsay numbers[2]\nsay pop(numbers)\nsay reverse(\"lizard\")\nsay slice(\"lizard\", 1, 4)\nsay clamp(15, 0, 10)\nanimate(\"go\", 2, 0)\n",
+    )
+    .unwrap();
+
+    let output = Command::new(lizard_binary()).arg(&path).output().unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert_eq!(
+        String::from_utf8(output.stdout).unwrap(),
+        "3\n3\ndrazil\niza\n10\n\rgo 1/2\rgo 2/2\n"
+    );
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn cli_check_and_format_use_real_source() {
     fs::create_dir_all("tests/data").unwrap();
     let path = temp_file("cli");
