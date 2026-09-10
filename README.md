@@ -6,7 +6,9 @@
 
 LIZARD is a native Rust-based programming language focused on simple syntax and fast startup.
 
-Current milestone: the first working interpreter for simple statements, variables, arithmetic, and `if` blocks.
+Current milestone: a native interpreter and CLI with functions, collections,
+loops, a growing standard library, terminal animation, and Windows/Linux/macOS
+release automation.
 
 ## License and project rules
 
@@ -32,6 +34,19 @@ cargo run -- repl
 The VS Code language package is in `editors/vscode/lizard-vscode`. It registers
 `.lz` files, syntax highlighting, snippets, run/check commands, and formatting
 through the native LIZARD CLI.
+
+## Features
+
+- Native Rust parser and runtime
+- Variables, arithmetic, booleans, comparisons, and interpolation
+- Functions with parameters and return values
+- `if`, `else`, `while`, `repeat`, and `each` blocks
+- Lists, maps, indexing, slicing, and collection helpers
+- Text conversion, searching, splitting, joining, and case helpers
+- Numeric helpers including `abs`, `min`, `max`, and `clamp`
+- Terminal progress animation with `animate(message, frames, delayMs)`
+- REPL, formatter, checker, project creation, and native build commands
+- Release downloads for Windows, Linux, and macOS
 
 For the complete installation, CLI, language, build, testing, and editor guide,
 see [docs/LIZARD-GUIDE.md](docs/LIZARD-GUIDE.md).

@@ -31,6 +31,12 @@ irm https://raw.githubusercontent.com/surjolive/LIZARD/master/install.ps1 | iex
 
 The published repository is [surjolive/LIZARD](https://github.com/surjolive/LIZARD).
 
+Linux and macOS users can install the latest x86_64 release with:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh | sh
+```
+
 For a per-user installation, add that directory to the user PATH, then open a new PowerShell or CMD window:
 
 ```powershell

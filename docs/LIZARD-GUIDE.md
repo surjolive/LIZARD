@@ -14,6 +14,8 @@ LIZARD/
 ├── editors/vscode/lizard-vscode/       # VS Code language package
 ├── build.bat                           # Windows CMD release build
 ├── build.ps1                           # Windows PowerShell release build
+├── install.sh                           # Linux/macOS installer
+├── .github/workflows/release.yml        # Cross-platform release workflow
 ├── INSTALL-WINDOWS.md                  # PATH installation notes
 └── docs/LIZARD-GUIDE.md                 # This guide
 ```
@@ -23,8 +25,8 @@ LIZARD/
 Development requires:
 
 - Rust and Cargo
-- Windows x64 for the Windows executable workflow
-- A native linker
+- A native linker for the selected target
+- Windows x64, Linux x86_64, or macOS Intel for the supported release targets
 
 For the GNU Windows target, install MinGW/WinLibs and ensure this command works:
 
@@ -35,6 +37,8 @@ x86_64-w64-mingw32-gcc --version
 For the MSVC target, install Visual Studio Build Tools with the C++ workload so `link.exe` is available.
 
 The language runtime itself is native Rust. It does not use Python, Node, or a Python wrapper.
+
+Download native releases from the [GitHub Releases page](https://github.com/surjolive/LIZARD/releases/latest).
 
 ## 3. Run From Source
 
@@ -185,6 +189,14 @@ say size([10, 20, 30])       # 3
 say typeOf(10)               # number
 say toText(42)               # 42
 say toNumber("12.5")         # 12.5
+say lower("LIZARD")          # lizard
+say upper("lizard")          # LIZARD
+say trim("  hello  ")        # hello
+say contains("hello", "ell") # true
+say split("a-b", "-")[1]    # b
+say join(["a", "b"], "-")  # a-b
+say first([10, 20])            # 10
+say last([10, 20])             # 20
 say abs(-4)                  # 4
 say floor(4.8)               # 4
 say ceil(4.2)                # 5
@@ -227,6 +239,14 @@ info("hello")
 ```
 
 `aro`, `print`, `echo`, `log`, and `info` print a value and return it.
+
+Standalone function calls are valid statements, so output and animation helpers
+can be used without wrapping them in `say`:
+
+```lz
+animate("Loading", 3, 100)
+print("Done")
+```
 
 ## 9. Checking and Formatting
 
@@ -315,6 +335,17 @@ lz doctor
 ```
 
 `where.exe lz` should point to `release/windows-x64/lz.exe` or the installation directory selected by you.
+
+### Linux and macOS
+
+Install the latest x86_64 release with:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh | sh
+```
+
+The installer places both commands in `~/.local/bin`. Set
+`LIZARD_INSTALL_DIR` to use a different directory.
 
 ## 12. Project Creation
 
@@ -408,6 +439,7 @@ The tests cover:
 - inline execution
 - check and format commands
 - native build output
+- extended built-ins and terminal animation
 
 ## 16. Common Problems
 
@@ -443,4 +475,8 @@ Rust source compilation can succeed while executable linking fails. Install a co
 
 ## 17. Current Scope
 
-The current implementation is a real native interpreter and CLI foundation. The parser/runtime and initial VS Code package are implemented. Full LSP, DAP debugger, package manager, large standard library, and integrations for every editor listed in the larger roadmap are future milestones, not currently claimed as complete.
+The current implementation is a real native interpreter and CLI with a growing
+standard library, terminal animation, native Windows builds, and automated
+Windows/Linux/macOS release packaging. Full LSP, DAP debugger, package manager,
+and integrations for every editor listed in a larger roadmap remain future
+milestones.
