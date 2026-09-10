@@ -4,6 +4,13 @@ LIZARD is a native Rust-based programming language focused on simple syntax and 
 
 Current milestone: the first working interpreter for simple statements, variables, arithmetic, and `if` blocks.
 
+## License and project rules
+
+LIZARD is released under the [MIT License](LICENSE), Copyright (c) 2026 Surjo
+Live. Contribution standards are defined in [CONTRIBUTING.md](CONTRIBUTING.md).
+Community behavior follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and
+security issues should be reported using [SECURITY.md](SECURITY.md).
+
 ## Usage
 
 ```
