@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::env;
@@ -5,12 +6,13 @@ use std::fmt;
 use std::fs;
 use std::io::Write;
 use std::process::{self, Command};
+use std::rc::Rc;
 use std::thread;
 use std::time::Duration;
 
 type Scope = HashMap<String, Value>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Value {
     Number(f64),
     Text(String),
@@ -20,6 +22,21 @@ enum Value {
     Map(HashMap<String, Value>),
     Function(Box<FunctionValue>),
     Builtin(String),
+    Class(Box<ClassValue>),
+    Object(Rc<RefCell<ObjectValue>>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct ClassValue {
+    name: String,
+    constructor: Option<FunctionValue>,
+    methods: HashMap<String, FunctionValue>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct ObjectValue {
+    class_name: String,
+    properties: HashMap<String, Value>,
 }
 
 impl fmt::Display for Value {
@@ -49,6 +66,8 @@ impl fmt::Display for Value {
             ),
             Value::Function(_) => write!(f, "<function>"),
             Value::Builtin(name) => write!(f, "<builtin {name}>"),
+            Value::Class(class) => write!(f, "<class {}>", class.name),
+            Value::Object(object) => write!(f, "<object {}>", object.borrow().class_name),
         }
     }
 }
@@ -72,11 +91,13 @@ impl Value {
             Value::Map(entries) => !entries.is_empty(),
             Value::Function(_) => true,
             Value::Builtin(_) => true,
+            Value::Class(_) => true,
+            Value::Object(_) => true,
         }
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Expr {
     Number(f64),
     Text(String),
@@ -93,6 +114,14 @@ enum Expr {
         callee: Box<Expr>,
         args: Vec<Expr>,
     },
+    Member {
+        target: Box<Expr>,
+        name: String,
+    },
+    New {
+        class_name: String,
+        args: Vec<Expr>,
+    },
     Binary {
         left: Box<Expr>,
         op: String,
@@ -100,7 +129,7 @@ enum Expr {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum Stmt {
     Say(Expr),
     Expression(Expr),
@@ -127,6 +156,15 @@ enum Stmt {
         name: String,
         params: Vec<String>,
         body: Vec<Stmt>,
+    },
+    ClassDef {
+        name: String,
+        methods: Vec<(String, FunctionValue)>,
+    },
+    PropertyAssign {
+        object: String,
+        property: String,
+        expression: Expr,
     },
     Return(Expr),
 }
@@ -169,7 +207,7 @@ impl Program {
         for raw in source.lines() {
             let trimmed = raw.trim_end_matches('\r');
             let indent = trimmed.chars().take_while(|ch| ch == &' ').count();
-            let text = trimmed[indent..].trim().to_string();
+            let text = strip_comment(&trimmed[indent..]).trim().to_string();
             if !text.is_empty() {
                 lines.push(Line { indent, text });
             }
@@ -187,6 +225,29 @@ impl Program {
         }
         Ok(())
     }
+}
+
+fn strip_comment(source: &str) -> &str {
+    let mut quote = None;
+    let mut escaped = false;
+    for (index, character) in source.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        if character == '\\' && quote.is_some() {
+            escaped = true;
+            continue;
+        }
+        if character == '\'' || character == '"' {
+            quote = if quote == Some(character) { None } else if quote.is_none() { Some(character) } else { quote };
+            continue;
+        }
+        if character == '#' && quote.is_none() {
+            return &source[..index];
+        }
+    }
+    source
 }
 
 impl Parser {
@@ -318,6 +379,32 @@ impl Parser {
             });
         }
 
+        if let Some(name) = line.strip_prefix("class ") {
+            let name = name.trim().to_string();
+            if name.is_empty() || name.contains(char::is_whitespace) {
+                return Err("Class name must be a single identifier".to_string());
+            }
+            let body_indent = if self.index < self.lines.len() {
+                self.lines[self.index].indent
+            } else {
+                0
+            };
+            if body_indent == 0 {
+                return Err("Class definition requires a body".to_string());
+            }
+            let body = self.parse_block(body_indent)?;
+            let mut methods = Vec::new();
+            for statement in body {
+                match statement {
+                    Stmt::FunctionDef { name, params, body } => {
+                        methods.push((name, FunctionValue::new(params, body)));
+                    }
+                    _ => return Err("Class bodies currently support methods only".to_string()),
+                }
+            }
+            return Ok(Stmt::ClassDef { name, methods });
+        }
+
         if let Some(rest) = line.strip_prefix("fn ") {
             let open = rest.find('(').unwrap_or(rest.len());
             let name = rest[..open].trim().to_string();
@@ -349,6 +436,16 @@ impl Parser {
         }
 
         if let Some((name, value)) = split_assignment(&line) {
+            if let Some((object, property)) = name.split_once('.') {
+                if object.is_empty() || property.is_empty() || property.contains('.') {
+                    return Err("Invalid property assignment".to_string());
+                }
+                return Ok(Stmt::PropertyAssign {
+                    object: object.to_string(),
+                    property: property.to_string(),
+                    expression: parse_expression(value)?,
+                });
+            }
             return Ok(Stmt::Assign(name, parse_expression(value)?));
         }
 
@@ -365,7 +462,7 @@ fn split_assignment(line: &str) -> Option<(String, &str)> {
     Some((name.to_string(), line[eq_index + 1..].trim()))
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct FunctionValue {
     params: Vec<String>,
     body: Vec<Stmt>,
@@ -519,6 +616,35 @@ impl ExprParser {
             }
             Some(Token::Identifier(name)) => {
                 self.index += 1;
+                if name == "new" {
+                    let class_name = match self.peek().cloned() {
+                        Some(Token::Identifier(class_name)) => {
+                            self.index += 1;
+                            class_name
+                        }
+                        _ => return Err("Expected class name after new".to_string()),
+                    };
+                    match self.peek() {
+                        Some(Token::Symbol(symbol)) if symbol == "(" => self.index += 1,
+                        _ => return Err("Expected '(' after class name".to_string()),
+                    }
+                    let mut args = Vec::new();
+                    if !matches!(self.peek(), Some(Token::Symbol(symbol)) if symbol == ")") {
+                        loop {
+                            args.push(self.parse_or()?);
+                            match self.peek() {
+                                Some(Token::Symbol(symbol)) if symbol == "," => self.index += 1,
+                                Some(Token::Symbol(symbol)) if symbol == ")" => break,
+                                _ => return Err("Expected ',' or ')' in constructor call".to_string()),
+                            }
+                        }
+                    }
+                    match self.peek() {
+                        Some(Token::Symbol(symbol)) if symbol == ")" => self.index += 1,
+                        _ => return Err("Expected ')' after constructor arguments".to_string()),
+                    }
+                    return Ok(Expr::New { class_name, args });
+                }
                 let mut expr = Expr::Var(name);
                 loop {
                     match self.peek() {
@@ -566,6 +692,20 @@ impl ExprParser {
                                 }
                                 _ => return Err("Expected ']' in index expression".to_string()),
                             }
+                        }
+                        Some(Token::Symbol(symbol)) if symbol == "." => {
+                            self.index += 1;
+                            let member = match self.peek().cloned() {
+                                Some(Token::Identifier(member)) => {
+                                    self.index += 1;
+                                    member
+                                }
+                                _ => return Err("Expected member name after '.'".to_string()),
+                            };
+                            expr = Expr::Member {
+                                target: Box::new(expr),
+                                name: member,
+                            };
                         }
                         _ => break,
                     }
@@ -650,6 +790,11 @@ fn tokenize_expression(input: &str) -> Result<Vec<Token>, String> {
     while index < chars.len() {
         let ch = chars[index];
         if ch.is_whitespace() {
+            index += 1;
+            continue;
+        }
+        if ch == '.' && !chars.get(index + 1).is_some_and(|next| next.is_ascii_digit()) {
+            tokens.push(Token::Symbol(".".to_string()));
             index += 1;
             continue;
         }
@@ -755,6 +900,7 @@ fn tokenize_expression(input: &str) -> Result<Vec<Token>, String> {
                         | '='
                         | ','
                         | ':'
+                        | '.'
                 ) {
                     tokens.push(Token::Symbol(ch.to_string()));
                     index += 1;
@@ -784,6 +930,21 @@ fn execute_statement(statement: &Stmt, scope: &mut Scope) -> Result<(), String> 
             let value = evaluate_expression(expression, scope)?;
             scope.insert(name.clone(), value);
             Ok(())
+        }
+        Stmt::PropertyAssign {
+            object,
+            property,
+            expression,
+        } => {
+            let value = evaluate_expression(expression, scope)?;
+            match scope.get_mut(object) {
+                Some(Value::Object(instance)) => {
+                    instance.borrow_mut().properties.insert(property.clone(), value);
+                    Ok(())
+                }
+                Some(_) => Err(format!("{object} is not an object")),
+                None => Err(format!("Unknown variable: {object}")),
+            }
         }
         Stmt::If {
             condition,
@@ -856,6 +1017,26 @@ fn execute_statement(statement: &Stmt, scope: &mut Scope) -> Result<(), String> 
             scope.insert(name.clone(), Value::Function(Box::new(function)));
             Ok(())
         }
+        Stmt::ClassDef { name, methods } => {
+            let mut constructor = None;
+            let mut class_methods = HashMap::new();
+            for (method_name, method) in methods {
+                if method_name == "new" {
+                    constructor = Some(method.clone());
+                } else {
+                    class_methods.insert(method_name.clone(), method.clone());
+                }
+            }
+            scope.insert(
+                name.clone(),
+                Value::Class(Box::new(ClassValue {
+                    name: name.clone(),
+                    constructor,
+                    methods: class_methods,
+                })),
+            );
+            Ok(())
+        }
         Stmt::Return(expression) => {
             let value = evaluate_expression(expression, scope)?;
             Err(format!("RETURN:{value}"))
@@ -887,6 +1068,47 @@ fn evaluate_expression(expression: &Expr, scope: &Scope) -> Result<Value, String
             .get(name)
             .cloned()
             .ok_or_else(|| format!("Unknown variable: {name}")),
+        Expr::New { class_name, args } => {
+            let class = match scope.get(class_name) {
+                Some(Value::Class(class)) => class.clone(),
+                Some(_) => return Err(format!("{class_name} is not a class")),
+                None => return Err(format!("Unknown class: {class_name}")),
+            };
+            let mut evaluated_args = Vec::new();
+            for arg in args {
+                evaluated_args.push(evaluate_expression(arg, scope)?);
+            }
+            let mut instance = Value::Object(Rc::new(RefCell::new(ObjectValue {
+                class_name: class.name.clone(),
+                properties: HashMap::new(),
+            })));
+            if let Some(constructor) = &class.constructor {
+                let mut constructor_scope = scope.clone();
+                constructor_scope.insert("this".to_string(), instance.clone());
+                if evaluated_args.len() != constructor.params.len() {
+                    return Err(format!(
+                        "Constructor expected {} arguments, got {}",
+                        constructor.params.len(),
+                        evaluated_args.len()
+                    ));
+                }
+                for (param, value) in constructor.params.iter().zip(evaluated_args) {
+                    constructor_scope.insert(param.clone(), value);
+                }
+                for statement in &constructor.body {
+                    if let Err(error) = execute_statement(statement, &mut constructor_scope) {
+                        if error.starts_with("RETURN:") {
+                            break;
+                        }
+                        return Err(error);
+                    }
+                }
+                instance = constructor_scope
+                    .remove("this")
+                    .ok_or_else(|| "Constructor lost this object".to_string())?;
+            }
+            Ok(instance)
+        }
         Expr::Index { target, index } => {
             let target_value = evaluate_expression(target, scope)?;
             let index_value = evaluate_expression(index, scope)?;
@@ -913,7 +1135,48 @@ fn evaluate_expression(expression: &Expr, scope: &Scope) -> Result<Value, String
                 _ => Err(format!("Cannot index {target_value} with {index_value}")),
             }
         }
+        Expr::Member { target, name } => {
+            let target_value = evaluate_expression(target, scope)?;
+            match target_value {
+                Value::Object(instance) => instance
+                    .borrow()
+                    .properties
+                    .get(name)
+                    .cloned()
+                    .or_else(|| {
+                        scope
+                            .get(&instance.borrow().class_name)
+                            .and_then(|value| match value {
+                                Value::Class(class) => class
+                                    .methods
+                                    .get(name)
+                                    .cloned()
+                                    .map(|method| Value::Function(Box::new(method))),
+                                _ => None,
+                            })
+                    })
+                    .ok_or_else(|| format!("Unknown member: {name}")),
+                _ => Err(format!("Cannot access member {name}")),
+            }
+        }
         Expr::Call { callee, args } => {
+            if let Expr::Member { target, name } = callee.as_ref() {
+                let receiver = evaluate_expression(target, scope)?;
+                let instance = match &receiver {
+                    Value::Object(instance) => instance,
+                    _ => return Err(format!("Cannot call member {name} on non-object")),
+                };
+                let method = match scope.get(&instance.borrow().class_name) {
+                    Some(Value::Class(class)) => class.methods.get(name).cloned(),
+                    _ => None,
+                }
+                .ok_or_else(|| format!("Unknown method: {name}"))?;
+                let mut evaluated_args = Vec::new();
+                for arg in args {
+                    evaluated_args.push(evaluate_expression(arg, scope)?);
+                }
+                return invoke_method(scope, &method, receiver, evaluated_args);
+            }
             let callee_value = evaluate_expression(callee, scope)?;
             let mut evaluated_args = Vec::new();
             for arg in args {
@@ -1014,12 +1277,51 @@ fn invoke_function(
     Ok(Value::Null)
 }
 
+fn invoke_method(
+    scope: &Scope,
+    function: &FunctionValue,
+    receiver: Value,
+    args: Vec<Value>,
+) -> Result<Value, String> {
+    if args.len() != function.params.len() {
+        return Err(format!(
+            "Method expected {} arguments, got {}",
+            function.params.len(),
+            args.len()
+        ));
+    }
+    let mut local_scope = scope.clone();
+    local_scope.insert("this".to_string(), receiver);
+    for (param, value) in function.params.iter().zip(args) {
+        local_scope.insert(param.clone(), value);
+    }
+    for statement in &function.body {
+        match statement {
+            Stmt::Return(expression) => return evaluate_expression(expression, &local_scope),
+            _ => {
+                if let Err(error) = execute_statement(statement, &mut local_scope) {
+                    if let Some(value) = error.strip_prefix("RETURN:") {
+                        return Ok(Value::Text(value.to_string()));
+                    }
+                    return Err(error);
+                }
+            }
+        }
+    }
+    Ok(Value::Null)
+}
+
 fn install_builtins(scope: &mut Scope) {
     for name in [
-        "size", "typeOf", "toText", "toNumber", "lower", "upper", "trim", "contains", "split",
-        "join", "first", "last", "sum", "range", "push", "pop", "reverse", "slice", "clamp",
-        "animate", "aro", "print", "echo", "log", "info", "abs", "floor", "ceil", "round", "min",
-        "max",
+        "size", "typeOf", "toText", "toNumber", "isEmpty", "isNumber", "startsWith",
+        "endsWith", "replace", "count", "indexOf", "any", "all", "sort", "unique",
+        "product", "pow", "sqrt", "lower", "upper", "trim", "contains", "split", "join",
+        "first", "last", "sum", "range", "push", "pop", "reverse", "slice", "clamp",
+        "animate", "aro", "print", "echo", "log", "info", "abs", "floor", "ceil", "round",
+        "min", "max", "is_empty", "is_function", "has_key", "has_item", "char_at",
+        "to_chars", "from_chars", "pad_start", "pad_end", "shift", "unshift", "remove",
+        "flatten", "sin", "cos", "tan", "exp", "random", "random_int", "keys", "values",
+        "merge", "get_or_default", "length", "get",
     ] {
         scope
             .entry(name.to_string())
@@ -1049,6 +1351,8 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 Value::List(_) => "list",
                 Value::Map(_) => "map",
                 Value::Function(_) | Value::Builtin(_) => "function",
+                Value::Class(_) => "class",
+                Value::Object(_) => "object",
             };
             Ok(Value::Text(value_type.to_string()))
         }
@@ -1066,6 +1370,143 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     .map_err(|_| "toNumber could not parse text".to_string()),
                 _ => Err("toNumber expects a number or text".to_string()),
             }
+        }
+        "isEmpty" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::Text(value) => Ok(Value::Bool(value.is_empty())),
+                Value::List(values) => Ok(Value::Bool(values.is_empty())),
+                Value::Map(entries) => Ok(Value::Bool(entries.is_empty())),
+                Value::Null => Ok(Value::Bool(true)),
+                _ => Ok(Value::Bool(false)),
+            }
+        }
+        "isNumber" => {
+            require_args(name, &args, 1)?;
+            Ok(Value::Bool(matches!(args[0], Value::Number(_))))
+        }
+        "startsWith" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::Text(value), Value::Text(prefix)) => Ok(Value::Bool(value.starts_with(prefix))),
+                _ => Err("startsWith expects text and a prefix".to_string()),
+            }
+        }
+        "endsWith" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::Text(value), Value::Text(suffix)) => Ok(Value::Bool(value.ends_with(suffix))),
+                _ => Err("endsWith expects text and a suffix".to_string()),
+            }
+        }
+        "replace" => {
+            require_args(name, &args, 3)?;
+            match (&args[0], &args[1], &args[2]) {
+                (Value::Text(value), Value::Text(target), Value::Text(replacement)) => {
+                    Ok(Value::Text(value.replace(target, replacement)))
+                }
+                _ => Err("replace expects text, target, and replacement".to_string()),
+            }
+        }
+        "count" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::Text(value), Value::Text(target)) => {
+                    let mut count = 0;
+                    let mut search_start = 0;
+                    while let Some(index) = value[search_start..].find(target) {
+                        count += 1;
+                        search_start += index + target.len();
+                    }
+                    Ok(Value::Number(count as f64))
+                }
+                _ => Err("count expects text and a substring".to_string()),
+            }
+        }
+        "indexOf" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::Text(value), Value::Text(target)) => {
+                    Ok(Value::Number(value.find(target).unwrap_or(usize::MAX) as f64))
+                }
+                (Value::List(values), value) => {
+                    let index = values.iter().position(|item| item == value);
+                    Ok(Value::Number(index.map_or(-1.0, |idx| idx as f64)))
+                }
+                _ => Err("indexOf expects text or list and a value".to_string()),
+            }
+        }
+        "any" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => Ok(Value::Bool(values.iter().any(Value::as_bool))),
+                _ => Err("any expects a list".to_string()),
+            }
+        }
+        "all" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => Ok(Value::Bool(values.iter().all(Value::as_bool))),
+                _ => Err("all expects a list".to_string()),
+            }
+        }
+        "sort" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => {
+                    let mut result = values.clone();
+                    result.sort_by(|left, right| match (left, right) {
+                        (Value::Number(left), Value::Number(right)) => left.partial_cmp(right).unwrap_or(Ordering::Equal),
+                        (Value::Text(left), Value::Text(right)) => left.cmp(right),
+                        (Value::Bool(left), Value::Bool(right)) => left.cmp(right),
+                        _ => left.to_string().cmp(&right.to_string()),
+                    });
+                    Ok(Value::List(result))
+                }
+                _ => Err("sort expects a list".to_string()),
+            }
+        }
+        "unique" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => {
+                    let mut result = Vec::new();
+                    for value in values {
+                        if !result.iter().any(|existing| existing == value) {
+                            result.push(value.clone());
+                        }
+                    }
+                    Ok(Value::List(result))
+                }
+                _ => Err("unique expects a list".to_string()),
+            }
+        }
+        "product" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(values) => {
+                    let product = values.iter().try_fold(1.0, |acc, value| {
+                        let number = number_arg(name, value)?;
+                        Ok::<f64, String>(acc * number)
+                    })?;
+                    Ok(Value::Number(product))
+                }
+                _ => Err("product expects a list of numbers".to_string()),
+            }
+        }
+        "pow" => {
+            require_args(name, &args, 2)?;
+            let base = number_arg(name, &args[0])?;
+            let exponent = number_arg(name, &args[1])?;
+            Ok(Value::Number(base.powf(exponent)))
+        }
+        "sqrt" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            if value < 0.0 {
+                return Err("sqrt expects a non-negative number".to_string());
+            }
+            Ok(Value::Number(value.sqrt()))
         }
         "lower" => {
             require_args(name, &args, 1)?;
@@ -1265,7 +1706,7 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             writeln!(stdout).map_err(|error| error.to_string())?;
             Ok(Value::Text(message.clone()))
         }
-        "aro" | "print" | "echo" | "log" | "info" => {
+        "aro" | "print" | "echo" | "info" => {
             require_args(name, &args, 1)?;
             let value = args[0].clone();
             println!("{value}");
@@ -1317,6 +1758,302 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 })
             })?;
             Ok(Value::Number(result))
+        }
+        // PHASE 2: New standard library functions
+        "is_empty" => {
+            require_args(name, &args, 1)?;
+            let is_empty = match &args[0] {
+                Value::Text(text) => text.is_empty(),
+                Value::List(list) => list.is_empty(),
+                Value::Map(map) => map.is_empty(),
+                Value::Null => true,
+                _ => false,
+            };
+            Ok(Value::Bool(is_empty))
+        }
+        "is_function" => {
+            require_args(name, &args, 1)?;
+            let is_func = matches!(args[0], Value::Function(_) | Value::Builtin(_));
+            Ok(Value::Bool(is_func))
+        }
+        "has_key" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::Map(map) => {
+                    let key = match &args[1] {
+                        Value::Text(k) => k.clone(),
+                        _ => return Err("has_key expects text key".to_string()),
+                    };
+                    Ok(Value::Bool(map.contains_key(&key)))
+                }
+                _ => Err("has_key expects a map".to_string()),
+            }
+        }
+        "has_item" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::List(list) => Ok(Value::Bool(list.contains(&args[1]))),
+                _ => Err("has_item expects a list".to_string()),
+            }
+        }
+        "char_at" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::Text(text) => {
+                    let index = index_arg(name, &args[1])?;
+                    let chars: Vec<char> = text.chars().collect();
+                    if index >= chars.len() {
+                        return Err("char_at index out of bounds".to_string());
+                    }
+                    Ok(Value::Text(chars[index].to_string()))
+                }
+                _ => Err("char_at expects text".to_string()),
+            }
+        }
+        "to_chars" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::Text(text) => {
+                    let chars = text
+                        .chars()
+                        .map(|c| Value::Text(c.to_string()))
+                        .collect();
+                    Ok(Value::List(chars))
+                }
+                _ => Err("to_chars expects text".to_string()),
+            }
+        }
+        "from_chars" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(chars) => {
+                    let text = chars
+                        .iter()
+                        .map(|v| match v {
+                            Value::Text(s) => Ok(s.clone()),
+                            _ => Err("from_chars expects list of text".to_string()),
+                        })
+                        .collect::<Result<String, String>>()?;
+                    Ok(Value::Text(text))
+                }
+                _ => Err("from_chars expects a list".to_string()),
+            }
+        }
+        "pad_start" => {
+            require_args(name, &args, 3)?;
+            match (&args[0], &args[1], &args[2]) {
+                (Value::Text(text), Value::Number(length), Value::Text(pad_char)) => {
+                    let len = *length as usize;
+                    let pad = if pad_char.is_empty() { " " } else { pad_char.as_str() };
+                    let missing = len.saturating_sub(text.chars().count());
+                    let padding: String = pad.chars().cycle().take(missing).collect();
+                    let result = format!("{padding}{text}");
+                    Ok(Value::Text(result))
+                }
+                _ => Err("pad_start expects text, number, and char".to_string()),
+            }
+        }
+        "pad_end" => {
+            require_args(name, &args, 3)?;
+            match (&args[0], &args[1], &args[2]) {
+                (Value::Text(text), Value::Number(length), Value::Text(pad_char)) => {
+                    let len = *length as usize;
+                    let pad = if pad_char.is_empty() { " " } else { pad_char.as_str() };
+                    let missing = len.saturating_sub(text.chars().count());
+                    let padding: String = pad.chars().cycle().take(missing).collect();
+                    let result = format!("{text}{padding}");
+                    Ok(Value::Text(result))
+                }
+                _ => Err("pad_end expects text, number, and char".to_string()),
+            }
+        }
+        "shift" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(list) => {
+                    if list.is_empty() {
+                        return Err("shift expects non-empty list".to_string());
+                    }
+                    Ok(list[0].clone())
+                }
+                _ => Err("shift expects a list".to_string()),
+            }
+        }
+        "unshift" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::List(list) => {
+                    let mut result = vec![args[1].clone()];
+                    result.extend_from_slice(list);
+                    Ok(Value::List(result))
+                }
+                _ => Err("unshift expects a list".to_string()),
+            }
+        }
+        "remove" => {
+            require_args(name, &args, 2)?;
+            match &args[0] {
+                Value::List(list) => {
+                    let index = index_arg(name, &args[1])?;
+                    if index >= list.len() {
+                        return Err("remove index out of bounds".to_string());
+                    }
+                    let mut result = list.clone();
+                    result.remove(index);
+                    Ok(Value::List(result))
+                }
+                _ => Err("remove expects a list".to_string()),
+            }
+        }
+        "flatten" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::List(list) => {
+                    let mut result = Vec::new();
+                    for item in list {
+                        match item {
+                            Value::List(inner) => result.extend_from_slice(inner),
+                            other => result.push(other.clone()),
+                        }
+                    }
+                    Ok(Value::List(result))
+                }
+                _ => Err("flatten expects a list".to_string()),
+            }
+        }
+        "sin" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            Ok(Value::Number(value.sin()))
+        }
+        "cos" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            Ok(Value::Number(value.cos()))
+        }
+        "tan" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            Ok(Value::Number(value.tan()))
+        }
+        "log" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            if value <= 0.0 {
+                return Err("log expects positive number".to_string());
+            }
+            Ok(Value::Number(value.ln()))
+        }
+        "exp" => {
+            require_args(name, &args, 1)?;
+            let value = number_arg(name, &args[0])?;
+            Ok(Value::Number(value.exp()))
+        }
+        "random" => {
+            require_args(name, &args, 0)?;
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos();
+            let seed = (nanos as f64) / 1_000_000_000.0;
+            Ok(Value::Number((seed * 31337.0) % 1.0))
+        }
+        "random_int" => {
+            require_args(name, &args, 2)?;
+            let min = number_arg(name, &args[0])? as i64;
+            let max = number_arg(name, &args[1])? as i64;
+            if min > max {
+                return Err("random_int min cannot exceed max".to_string());
+            }
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let nanos = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .subsec_nanos();
+            let range = (max - min + 1) as u32;
+            let result = min + ((nanos % range as u32) as i64);
+            Ok(Value::Number(result as f64))
+        }
+        "keys" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::Map(map) => {
+                    let keys: Vec<Value> = map
+                        .keys()
+                        .map(|k| Value::Text(k.clone()))
+                        .collect();
+                    Ok(Value::List(keys))
+                }
+                _ => Err("keys expects a map".to_string()),
+            }
+        }
+        "values" => {
+            require_args(name, &args, 1)?;
+            match &args[0] {
+                Value::Map(map) => {
+                    let values: Vec<Value> = map.values().cloned().collect();
+                    Ok(Value::List(values))
+                }
+                _ => Err("values expects a map".to_string()),
+            }
+        }
+        "merge" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::Map(map1), Value::Map(map2)) => {
+                    let mut result = map1.clone();
+                    for (key, value) in map2 {
+                        result.insert(key.clone(), value.clone());
+                    }
+                    Ok(Value::Map(result))
+                }
+                _ => Err("merge expects two maps".to_string()),
+            }
+        }
+        "get_or_default" => {
+            require_args(name, &args, 3)?;
+            match &args[0] {
+                Value::Map(map) => {
+                    let key = match &args[1] {
+                        Value::Text(k) => k,
+                        _ => return Err("get_or_default expects text key".to_string()),
+                    };
+                    let value = map
+                        .get(key)
+                        .cloned()
+                        .unwrap_or_else(|| args[2].clone());
+                    Ok(value)
+                }
+                _ => Err("get_or_default expects a map".to_string()),
+            }
+        }
+        "length" => {
+            require_args(name, &args, 1)?;
+            let len = match &args[0] {
+                Value::Text(text) => text.chars().count(),
+                Value::List(list) => list.len(),
+                Value::Map(map) => map.len(),
+                _ => return Err("length expects text, list, or map".to_string()),
+            };
+            Ok(Value::Number(len as f64))
+        }
+        "get" => {
+            require_args(name, &args, 2)?;
+            match (&args[0], &args[1]) {
+                (Value::List(list), Value::Number(index)) => {
+                    let idx = *index as usize;
+                    list.get(idx)
+                        .cloned()
+                        .ok_or_else(|| "get index out of bounds".to_string())
+                }
+                (Value::Map(map), Value::Text(key)) => {
+                    map.get(key)
+                        .cloned()
+                        .ok_or_else(|| "get key not found".to_string())
+                }
+                _ => Err("get expects list/index or map/key".to_string()),
+            }
         }
         _ => Err(format!("Unknown builtin: {name}")),
     }
@@ -1585,6 +2322,11 @@ fn main() {
 
     if matches!(args[0].as_str(), "update" | "upgrade") {
         run_update(args.iter().any(|arg| arg == "--check"));
+        return;
+    }
+
+    if args[0] == "uninstall" {
+        run_uninstall();
         return;
     }
 
@@ -1958,9 +2700,45 @@ fn run_doctor() {
     println!("\nLIZARD installation is healthy.");
 }
 
+fn run_uninstall() {
+    let uninstaller_url = if env::consts::OS == "windows" {
+        "https://raw.githubusercontent.com/surjolive/LIZARD/master/uninstall.ps1"
+    } else {
+        "https://raw.githubusercontent.com/surjolive/LIZARD/master/uninstall.sh"
+    };
+    let started = if env::consts::OS == "windows" {
+        let command = format!(
+            "$path = Join-Path $env:TEMP 'lizard-uninstall.ps1'; Invoke-WebRequest -UseBasicParsing -Uri '{uninstaller_url}' -OutFile $path; Start-Sleep -Milliseconds 750; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $path"
+        );
+        Command::new("powershell.exe")
+            .args([
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                &command,
+            ])
+            .spawn()
+            .is_ok()
+    } else {
+        let command = format!("sleep 1; curl -fsSL '{uninstaller_url}' | sh");
+        Command::new("sh").args(["-c", &command]).spawn().is_ok()
+    };
+
+    if started {
+        println!("Uninstallation started. LIZARD will be removed after this command exits.");
+        println!("The uninstaller will remove all LIZARD binaries and PATH entries.");
+    } else {
+        eprintln!(
+            "Could not start the uninstaller. Please remove LIZARD manually from %LOCALAPPDATA%\\LIZARD directory."
+        );
+        process::exit(4);
+    }
+}
+
 fn print_help() {
     println!(
-        "LIZARD Programming Language\n\nUsage:\n    lz [command] [file]\n\nCommands:\n    run       Run a LIZARD program\n    build     Build a native executable\n    repl      Start the REPL\n    update    Update LIZARD to the latest release\n    upgrade   Alias for update\n    check     Check source code\n    fmt       Format source code\n    test      Run project tests\n    new       Create a project\n    doctor    Diagnose installation\n\nOptions:\n    --version\n    --help\n    -e <code>"
+        "LIZARD Programming Language\n\nUsage:\n    lz [command] [file]\n\nCommands:\n    run       Run a LIZARD program\n    build     Build a native executable\n    repl      Start the REPL\n    update    Update LIZARD to the latest release\n    upgrade   Alias for update\n    uninstall Uninstall LIZARD\n    check     Check source code\n    fmt       Format source code\n    test      Run project tests\n    new       Create a project\n    doctor    Diagnose installation\n\nOptions:\n    --version\n    --help\n    -e <code>"
     );
 }
 

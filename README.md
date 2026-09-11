@@ -53,6 +53,11 @@ through the native LIZARD CLI.
 For the complete installation, CLI, language, build, testing, and editor guide,
 see [docs/LIZARD-GUIDE.md](docs/LIZARD-GUIDE.md).
 
+The package ecosystem specification is documented in
+[LIZARD_PACKAGE_ECOSYSTEM_SPECIFICATION.md](LIZARD_PACKAGE_ECOSYSTEM_SPECIFICATION.md).
+The planned registry is `packages.lizard.dev`; registry and publishing features
+are not yet implemented in the current interpreter.
+
 ## Install on Windows
 
 The installer downloads `lz.exe` and `lizard.exe` into
