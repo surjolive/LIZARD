@@ -11,9 +11,18 @@ loops, a growing standard library, terminal animation, and Windows/Linux/macOS
 release automation.
 
 <p align="center">
-    <a href="https://github.com/surjolive/LIZARD/releases/latest"><img src="https://img.shields.io/github/v/release/surjolive/LIZARD?display_name=tag&sort=semver" alt="Latest release"></a>
-    <a href="https://github.com/surjolive/LIZARD/actions"><img src="https://img.shields.io/github/actions/workflow/status/surjolive/LIZARD/release.yml?label=release" alt="Release workflow"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/github/license/surjolive/LIZARD" alt="MIT License"></a>
+    <a href="https://github.com/surjolive/LIZARD/releases/latest"><img src="https://img.shields.io/github/v/release/surjolive/LIZARD?display_name=tag&sort=semver&style=for-the-badge&color=brightgreen" alt="Latest release"></a>
+    <a href="https://github.com/surjolive/LIZARD/actions"><img src="https://img.shields.io/github/actions/workflow/status/surjolive/LIZARD/release.yml?label=release&style=for-the-badge" alt="Release workflow"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/surjolive/LIZARD?style=for-the-badge&color=blue" alt="MIT License"></a>
+    <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust-orange?style=for-the-badge&logo=rust" alt="Built with Rust"></a>
+</p>
+
+<p align="center">
+    <img src="https://img.shields.io/badge/platform-Windows%20x64-0078D6?style=flat-square&logo=windows" alt="Windows x64">
+    <img src="https://img.shields.io/badge/platform-Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux">
+    <img src="https://img.shields.io/badge/platform-macOS-111111?style=flat-square&logo=apple" alt="macOS">
+    <a href="editors/vscode/lizard-vscode"><img src="https://img.shields.io/badge/VS%20Code-extension-007ACC?style=flat-square&logo=visual-studio-code" alt="VS Code extension"></a>
+    <a href="docs/LIZARD-GUIDE.md"><img src="https://img.shields.io/badge/docs-LIZARD%20Guide-8A2BE2?style=flat-square" alt="LIZARD Guide"></a>
 </p>
 
 <table>
