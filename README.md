@@ -10,6 +10,40 @@ Current milestone: a native interpreter and CLI with functions, collections,
 loops, a growing standard library, terminal animation, and Windows/Linux/macOS
 release automation.
 
+<table>
+<tr>
+<td>
+
+## Download latest version
+
+Get the latest LIZARD release from GitHub. The current release is **v0.1.0**.
+
+<a href="https://github.com/surjolive/LIZARD/releases/latest"><strong>Download latest release</strong></a>
+
+<br>
+
+<a href="https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lizard.exe">Windows x64: lizard.exe</a> ·
+<a href="https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lz.exe">Windows x64: lz.exe</a>
+
+</td>
+</tr>
+</table>
+
+## Quick start
+
+LIZARD requires Rust and Cargo. Clone the repository, run the example program,
+and verify the compiler with:
+
+```sh
+git clone https://github.com/surjolive/LIZARD.git
+cd LIZARD
+cargo run -- hello.lz
+cargo test
+```
+
+Use `cargo run -- --help` to see the available CLI commands. The installed
+executables are named `lz` and `lizard` and use the same runtime.
+
 ## License and project rules
 
 LIZARD is released under the [MIT License](LICENSE), Copyright (c) 2026 Surjo
@@ -35,6 +69,23 @@ cargo run -- update --check
 The VS Code language package is in `editors/vscode/lizard-vscode`. It registers
 `.lz` files, syntax highlighting, snippets, run/check commands, and formatting
 through the native LIZARD CLI.
+
+## Development
+
+Run the test suite after changing the parser, runtime, or CLI:
+
+```sh
+cargo test
+```
+
+For a fast compile-only check, use:
+
+```sh
+cargo check
+```
+
+The full language and editor guide is available at
+[docs/LIZARD-GUIDE.md](docs/LIZARD-GUIDE.md).
 
 ## Features
 
