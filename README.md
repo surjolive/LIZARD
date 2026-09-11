@@ -46,8 +46,8 @@ Get the latest LIZARD release from GitHub. The current release is **v0.1.0**.
 
 <br>
 
-<a href="https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lizard.exe">Windows x64: lizard.exe</a> ·
-<a href="https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lz.exe">Windows x64: lz.exe</a>
+<a href="https://github.com/surjolive/LIZARD/releases/latest/download/lizard.exe">Windows x64: lizard.exe</a> ·
+<a href="https://github.com/surjolive/LIZARD/releases/latest/download/lz.exe">Windows x64: lz.exe</a>
 
 </td>
 </tr>
@@ -94,7 +94,9 @@ that govern code, community participation, and security reports.
 | `cargo run -- new MyProject` | Create a project skeleton |
 | `cargo run -- doctor` | Diagnose the current installation |
 | `cargo run -- update --check` | Check for a newer release safely |
-| `cargo run -- upgrade` | Update the installed runtime |
+| `cargo run -- update` | Install the latest release |
+| `cargo run -- upgrade` | Alias for `update` |
+| `cargo run -- uninstall` | Remove the installed runtime and PATH entries |
 | `cargo run -- --version` | Show version and runtime information |
 | `cargo run -- --help` | Show all CLI help |
 
@@ -222,7 +224,7 @@ Download the latest native release from the
 
 | Platform | Download |
 | --- | --- |
-| Windows x86_64 | [`lizard.exe`](https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lizard.exe) or [`lz.exe`](https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lz.exe) |
+| Windows x86_64 | [`lizard.exe`](https://github.com/surjolive/LIZARD/releases/latest/download/lizard.exe) or [`lz.exe`](https://github.com/surjolive/LIZARD/releases/latest/download/lz.exe) |
 | Linux x86_64 | See the [latest release](https://github.com/surjolive/LIZARD/releases/latest) |
 | macOS Intel | See the [latest release](https://github.com/surjolive/LIZARD/releases/latest) |
 
@@ -235,6 +237,28 @@ curl -fsSL https://raw.githubusercontent.com/surjolive/LIZARD/master/install.sh 
 The Unix installer places `lz` and `lizard` in `~/.local/bin`. Set
 `LIZARD_INSTALL_DIR` to choose another location. Releases are built
 automatically by GitHub Actions whenever a `v*` tag is pushed.
+
+## Update, upgrade, and uninstall
+
+Use the installed CLI to manage the runtime without downloading files manually:
+
+```sh
+# Check without changing anything
+lz update --check
+
+# Install the latest release
+lz update
+
+# Same operation as update
+lz upgrade
+
+# Remove LIZARD binaries and PATH entries
+lz uninstall
+```
+
+The updater starts the platform installer in the background so the running
+executable can exit before its files are replaced. Open a new terminal after an
+update, then confirm the installed version with `lz --version`.
 
 ## Windows release build
 
