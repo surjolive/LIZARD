@@ -68,12 +68,17 @@ cargo test
 Use `cargo run -- --help` to see the available CLI commands. The installed
 executables are named `lz` and `lizard` and use the same runtime.
 
-## License and project rules
+## Project policies
 
-LIZARD is released under the [MIT License](LICENSE), Copyright (c) 2026 Surjo
-Live. Contribution standards are defined in [CONTRIBUTING.md](CONTRIBUTING.md).
-Community behavior follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and
-security issues should be reported using [SECURITY.md](SECURITY.md).
+LIZARD is open source under the MIT License. Use the links below for the rules
+that govern code, community participation, and security reports.
+
+| Policy | Details |
+| --- | --- |
+| [MIT License](LICENSE) | Copyright (c) 2026 Surjo Live |
+| [Contributing guide](CONTRIBUTING.md) | Development rules, testing, and pull request requirements |
+| [Code of Conduct](CODE_OF_CONDUCT.md) | Community standards and expected behavior |
+| [Security policy](SECURITY.md) | How to report a security vulnerability privately |
 
 ## Usage
 
