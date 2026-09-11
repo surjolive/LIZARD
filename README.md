@@ -12,7 +12,7 @@ release automation.
 
 <p align="center">
     <a href="https://github.com/surjolive/LIZARD/releases/latest"><img src="https://img.shields.io/github/v/release/surjolive/LIZARD?display_name=tag&sort=semver&style=for-the-badge&color=brightgreen" alt="Latest release"></a>
-    <a href="https://github.com/surjolive/LIZARD/actions"><img src="https://img.shields.io/github/actions/workflow/status/surjolive/LIZARD/release.yml?label=release&style=for-the-badge" alt="Release workflow"></a>
+    <a href="https://github.com/surjolive/LIZARD/actions/workflows/release.yml"><img src="https://github.com/surjolive/LIZARD/actions/workflows/release.yml/badge.svg?branch=master" alt="Release workflow"></a>
     <a href="LICENSE"><img src="https://img.shields.io/github/license/surjolive/LIZARD?style=for-the-badge&color=blue" alt="MIT License"></a>
     <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/built%20with-Rust-orange?style=for-the-badge&logo=rust" alt="Built with Rust"></a>
 </p>
