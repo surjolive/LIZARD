@@ -240,7 +240,13 @@ fn strip_comment(source: &str) -> &str {
             continue;
         }
         if character == '\'' || character == '"' {
-            quote = if quote == Some(character) { None } else if quote.is_none() { Some(character) } else { quote };
+            quote = if quote == Some(character) {
+                None
+            } else if quote.is_none() {
+                Some(character)
+            } else {
+                quote
+            };
             continue;
         }
         if character == '#' && quote.is_none() {
@@ -635,7 +641,11 @@ impl ExprParser {
                             match self.peek() {
                                 Some(Token::Symbol(symbol)) if symbol == "," => self.index += 1,
                                 Some(Token::Symbol(symbol)) if symbol == ")" => break,
-                                _ => return Err("Expected ',' or ')' in constructor call".to_string()),
+                                _ => {
+                                    return Err(
+                                        "Expected ',' or ')' in constructor call".to_string()
+                                    );
+                                }
                             }
                         }
                     }
@@ -793,7 +803,11 @@ fn tokenize_expression(input: &str) -> Result<Vec<Token>, String> {
             index += 1;
             continue;
         }
-        if ch == '.' && !chars.get(index + 1).is_some_and(|next| next.is_ascii_digit()) {
+        if ch == '.'
+            && !chars
+                .get(index + 1)
+                .is_some_and(|next| next.is_ascii_digit())
+        {
             tokens.push(Token::Symbol(".".to_string()));
             index += 1;
             continue;
@@ -939,7 +953,10 @@ fn execute_statement(statement: &Stmt, scope: &mut Scope) -> Result<(), String> 
             let value = evaluate_expression(expression, scope)?;
             match scope.get_mut(object) {
                 Some(Value::Object(instance)) => {
-                    instance.borrow_mut().properties.insert(property.clone(), value);
+                    instance
+                        .borrow_mut()
+                        .properties
+                        .insert(property.clone(), value);
                     Ok(())
                 }
                 Some(_) => Err(format!("{object} is not an object")),
@@ -1313,15 +1330,76 @@ fn invoke_method(
 
 fn install_builtins(scope: &mut Scope) {
     for name in [
-        "size", "typeOf", "toText", "toNumber", "isEmpty", "isNumber", "startsWith",
-        "endsWith", "replace", "count", "indexOf", "any", "all", "sort", "unique",
-        "product", "pow", "sqrt", "lower", "upper", "trim", "contains", "split", "join",
-        "first", "last", "sum", "range", "push", "pop", "reverse", "slice", "clamp",
-        "animate", "aro", "print", "echo", "log", "info", "abs", "floor", "ceil", "round",
-        "min", "max", "is_empty", "is_function", "has_key", "has_item", "char_at",
-        "to_chars", "from_chars", "pad_start", "pad_end", "shift", "unshift", "remove",
-        "flatten", "sin", "cos", "tan", "exp", "random", "random_int", "keys", "values",
-        "merge", "get_or_default", "length", "get",
+        "size",
+        "typeOf",
+        "toText",
+        "toNumber",
+        "isEmpty",
+        "isNumber",
+        "startsWith",
+        "endsWith",
+        "replace",
+        "count",
+        "indexOf",
+        "any",
+        "all",
+        "sort",
+        "unique",
+        "product",
+        "pow",
+        "sqrt",
+        "lower",
+        "upper",
+        "trim",
+        "contains",
+        "split",
+        "join",
+        "first",
+        "last",
+        "sum",
+        "range",
+        "push",
+        "pop",
+        "reverse",
+        "slice",
+        "clamp",
+        "animate",
+        "aro",
+        "print",
+        "echo",
+        "log",
+        "info",
+        "abs",
+        "floor",
+        "ceil",
+        "round",
+        "min",
+        "max",
+        "is_empty",
+        "is_function",
+        "has_key",
+        "has_item",
+        "char_at",
+        "to_chars",
+        "from_chars",
+        "pad_start",
+        "pad_end",
+        "shift",
+        "unshift",
+        "remove",
+        "flatten",
+        "sin",
+        "cos",
+        "tan",
+        "exp",
+        "random",
+        "random_int",
+        "keys",
+        "values",
+        "merge",
+        "get_or_default",
+        "length",
+        "get",
     ] {
         scope
             .entry(name.to_string())
@@ -1388,14 +1466,18 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
         "startsWith" => {
             require_args(name, &args, 2)?;
             match (&args[0], &args[1]) {
-                (Value::Text(value), Value::Text(prefix)) => Ok(Value::Bool(value.starts_with(prefix))),
+                (Value::Text(value), Value::Text(prefix)) => {
+                    Ok(Value::Bool(value.starts_with(prefix)))
+                }
                 _ => Err("startsWith expects text and a prefix".to_string()),
             }
         }
         "endsWith" => {
             require_args(name, &args, 2)?;
             match (&args[0], &args[1]) {
-                (Value::Text(value), Value::Text(suffix)) => Ok(Value::Bool(value.ends_with(suffix))),
+                (Value::Text(value), Value::Text(suffix)) => {
+                    Ok(Value::Bool(value.ends_with(suffix)))
+                }
                 _ => Err("endsWith expects text and a suffix".to_string()),
             }
         }
@@ -1426,9 +1508,9 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
         "indexOf" => {
             require_args(name, &args, 2)?;
             match (&args[0], &args[1]) {
-                (Value::Text(value), Value::Text(target)) => {
-                    Ok(Value::Number(value.find(target).unwrap_or(usize::MAX) as f64))
-                }
+                (Value::Text(value), Value::Text(target)) => Ok(Value::Number(
+                    value.find(target).unwrap_or(usize::MAX) as f64,
+                )),
                 (Value::List(values), value) => {
                     let index = values.iter().position(|item| item == value);
                     Ok(Value::Number(index.map_or(-1.0, |idx| idx as f64)))
@@ -1456,7 +1538,9 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 Value::List(values) => {
                     let mut result = values.clone();
                     result.sort_by(|left, right| match (left, right) {
-                        (Value::Number(left), Value::Number(right)) => left.partial_cmp(right).unwrap_or(Ordering::Equal),
+                        (Value::Number(left), Value::Number(right)) => {
+                            left.partial_cmp(right).unwrap_or(Ordering::Equal)
+                        }
                         (Value::Text(left), Value::Text(right)) => left.cmp(right),
                         (Value::Bool(left), Value::Bool(right)) => left.cmp(right),
                         _ => left.to_string().cmp(&right.to_string()),
@@ -1814,10 +1898,7 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             require_args(name, &args, 1)?;
             match &args[0] {
                 Value::Text(text) => {
-                    let chars = text
-                        .chars()
-                        .map(|c| Value::Text(c.to_string()))
-                        .collect();
+                    let chars = text.chars().map(|c| Value::Text(c.to_string())).collect();
                     Ok(Value::List(chars))
                 }
                 _ => Err("to_chars expects text".to_string()),
@@ -1844,7 +1925,11 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             match (&args[0], &args[1], &args[2]) {
                 (Value::Text(text), Value::Number(length), Value::Text(pad_char)) => {
                     let len = *length as usize;
-                    let pad = if pad_char.is_empty() { " " } else { pad_char.as_str() };
+                    let pad = if pad_char.is_empty() {
+                        " "
+                    } else {
+                        pad_char.as_str()
+                    };
                     let missing = len.saturating_sub(text.chars().count());
                     let padding: String = pad.chars().cycle().take(missing).collect();
                     let result = format!("{padding}{text}");
@@ -1858,7 +1943,11 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             match (&args[0], &args[1], &args[2]) {
                 (Value::Text(text), Value::Number(length), Value::Text(pad_char)) => {
                     let len = *length as usize;
-                    let pad = if pad_char.is_empty() { " " } else { pad_char.as_str() };
+                    let pad = if pad_char.is_empty() {
+                        " "
+                    } else {
+                        pad_char.as_str()
+                    };
                     let missing = len.saturating_sub(text.chars().count());
                     let padding: String = pad.chars().cycle().take(missing).collect();
                     let result = format!("{text}{padding}");
@@ -1979,10 +2068,7 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
             require_args(name, &args, 1)?;
             match &args[0] {
                 Value::Map(map) => {
-                    let keys: Vec<Value> = map
-                        .keys()
-                        .map(|k| Value::Text(k.clone()))
-                        .collect();
+                    let keys: Vec<Value> = map.keys().map(|k| Value::Text(k.clone())).collect();
                     Ok(Value::List(keys))
                 }
                 _ => Err("keys expects a map".to_string()),
@@ -2019,10 +2105,7 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                         Value::Text(k) => k,
                         _ => return Err("get_or_default expects text key".to_string()),
                     };
-                    let value = map
-                        .get(key)
-                        .cloned()
-                        .unwrap_or_else(|| args[2].clone());
+                    let value = map.get(key).cloned().unwrap_or_else(|| args[2].clone());
                     Ok(value)
                 }
                 _ => Err("get_or_default expects a map".to_string()),
@@ -2047,11 +2130,10 @@ fn invoke_builtin(name: &str, args: Vec<Value>) -> Result<Value, String> {
                         .cloned()
                         .ok_or_else(|| "get index out of bounds".to_string())
                 }
-                (Value::Map(map), Value::Text(key)) => {
-                    map.get(key)
-                        .cloned()
-                        .ok_or_else(|| "get key not found".to_string())
-                }
+                (Value::Map(map), Value::Text(key)) => map
+                    .get(key)
+                    .cloned()
+                    .ok_or_else(|| "get key not found".to_string()),
                 _ => Err("get expects list/index or map/key".to_string()),
             }
         }
