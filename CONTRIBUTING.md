@@ -36,6 +36,22 @@ A pull request should include:
 3. Documentation updates when syntax, CLI commands, builtins, animations, or installation changes.
 4. Validation output or a note explaining any unavailable toolchain.
 
+## Contribution workflow
+
+Use this workflow for a focused change:
+
+```powershell
+git switch -c feature/your-change
+cargo fmt -- --check
+cargo check
+cargo test
+git push -u origin feature/your-change
+```
+
+Open a pull request against `master` after the checks pass. Keep each pull
+request focused on one behavior or documentation improvement, and update the
+README or guide when the user-facing workflow changes.
+
 ## Language design
 
 New syntax should fit LIZARD's simple block-based style. Prefer a small, composable feature with clear runtime errors over a large untested API surface.
