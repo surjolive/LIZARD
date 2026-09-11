@@ -10,6 +10,21 @@ Current milestone: a native interpreter and CLI with functions, collections,
 loops, a growing standard library, terminal animation, and Windows/Linux/macOS
 release automation.
 
+<p align="center">
+    <a href="https://github.com/surjolive/LIZARD/releases/latest"><img src="https://img.shields.io/github/v/release/surjolive/LIZARD?display_name=tag&sort=semver" alt="Latest release"></a>
+    <a href="https://github.com/surjolive/LIZARD/actions"><img src="https://img.shields.io/github/actions/workflow/status/surjolive/LIZARD/release.yml?label=release" alt="Release workflow"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/github/license/surjolive/LIZARD" alt="MIT License"></a>
+</p>
+
+<table>
+<tr>
+<td><strong>Native</strong><br>Rust interpreter and runtime</td>
+<td><strong>Readable</strong><br>Simple indentation-based syntax</td>
+<td><strong>Practical</strong><br>CLI, REPL, formatter, checker, and builder</td>
+<td><strong>Animated</strong><br>Terminal progress animation built in</td>
+</tr>
+</table>
+
 <table>
 <tr>
 <td>
@@ -53,18 +68,21 @@ security issues should be reported using [SECURITY.md](SECURITY.md).
 
 ## Usage
 
-```
-cargo run -- hello.lz
-cargo run -- --version
-cargo run -- check hello.lz
-cargo run -- fmt hello.lz
-cargo run -- fmt --write hello.lz
-cargo run -- -e "say 10 + 20"
-cargo run -- build hello.lz --output hello.exe
-cargo run -- doctor
-cargo run -- repl
-cargo run -- update --check
-```
+| Command | What it does |
+| --- | --- |
+| `cargo run -- hello.lz` | Run a LIZARD source file |
+| `cargo run -- repl` | Start the interactive REPL |
+| `cargo run -- -e "say 10 + 20"` | Execute inline source |
+| `cargo run -- check hello.lz` | Parse and validate without running |
+| `cargo run -- fmt hello.lz` | Print formatted source |
+| `cargo run -- fmt --write hello.lz` | Format and save a source file |
+| `cargo run -- build hello.lz --output hello.exe` | Build a native output |
+| `cargo run -- new MyProject` | Create a project skeleton |
+| `cargo run -- doctor` | Diagnose the current installation |
+| `cargo run -- update --check` | Check for a newer release safely |
+| `cargo run -- upgrade` | Update the installed runtime |
+| `cargo run -- --version` | Show version and runtime information |
+| `cargo run -- --help` | Show all CLI help |
 
 The VS Code language package is in `editors/vscode/lizard-vscode`. It registers
 `.lz` files, syntax highlighting, snippets, run/check commands, and formatting
@@ -87,19 +105,37 @@ cargo check
 The full language and editor guide is available at
 [docs/LIZARD-GUIDE.md](docs/LIZARD-GUIDE.md).
 
-## Features
+## Features at a glance
 
-- Native Rust parser and runtime
-- Variables, arithmetic, booleans, comparisons, and interpolation
-- Functions with parameters and return values
-- `if`, `else`, `while`, `repeat`, and `each` blocks
-- Lists, maps, indexing, slicing, and collection helpers
-- Text conversion, searching, splitting, joining, and case helpers
-- Numeric helpers including `abs`, `min`, `max`, and `clamp`
-- Terminal progress animation with `animate(message, frames, delayMs)`
-- REPL, formatter, checker, project creation, and native build commands
-- `update` and `upgrade` commands with safe `--check` mode
-- Release downloads for Windows, Linux, and macOS
+### Language and runtime
+
+- **Native Rust implementation** with a fast-starting interpreter and runtime
+- **Simple syntax** with readable blocks and `.lz` source files
+- **Core values:** numbers, text, booleans, `null`, lists, maps, and functions
+- **Variables and expressions:** arithmetic, comparisons, boolean operators, and interpolation
+- **Control flow:** `if`, `else`, `while`, `repeat`, and `each`
+- **Functions:** parameters, return values, and reusable program logic
+- **Collections:** indexing, slicing, list helpers, map values, and iteration
+
+### Standard library
+
+- **Text:** `toText`, `lower`, `upper`, `trim`, `contains`, `split`, and `join`
+- **Collections:** `size`, `first`, `last`, `push`, `pop`, `reverse`, and `slice`
+- **Numbers:** `toNumber`, `abs`, `floor`, `ceil`, `round`, `min`, `max`, and `clamp`
+- **Output:** `say`, `print`, `echo`, `log`, `info`, and `aro`
+- **Terminal animation:** `animate(message, frames, delayMs)` for visible progress feedback
+
+### Developer experience
+
+- **REPL** for experimenting with expressions and language features
+- **Formatter** with preview and in-place `--write` modes
+- **Checker** for validating source without executing it
+- **Native builder** for producing a standalone runtime output
+- **Project generator** with `new ProjectName`
+- **Diagnostics** with `doctor`, version reporting, and clear runtime errors
+- **Update tools** with `update`, `upgrade`, and safe `update --check` mode
+- **VS Code package** with `.lz` language support, syntax highlighting, snippets,
+  run/check commands, and formatting
 
 For the complete installation, CLI, language, build, testing, and editor guide,
 see [docs/LIZARD-GUIDE.md](docs/LIZARD-GUIDE.md).
@@ -108,6 +144,26 @@ The package ecosystem specification is documented in
 [LIZARD_PACKAGE_ECOSYSTEM_SPECIFICATION.md](LIZARD_PACKAGE_ECOSYSTEM_SPECIFICATION.md).
 The planned registry is `packages.lizard.dev`; registry and publishing features
 are not yet implemented in the current interpreter.
+
+## Animation example
+
+Terminal animation is built into the runtime. The first argument is the message,
+the second is the number of frames, and the third is the delay between frames in
+milliseconds:
+
+```lz
+animate("Loading LIZARD", 8, 120)
+print("Ready!")
+```
+
+For deterministic scripts and tests, use a delay of `0`:
+
+```lz
+animate("Checking", 3, 0)
+```
+
+The animation works as a standalone function call, so it does not need to be
+wrapped in `say`.
 
 ## Install on Windows
 
@@ -152,9 +208,9 @@ Download the latest native release from the
 
 | Platform | Download |
 | --- | --- |
-| Windows x86_64 | `lizard-windows-x86_64.zip` |
-| Linux x86_64 | `lizard-linux-x86_64.tar.gz` |
-| macOS Intel | `lizard-macos-x86_64.tar.gz` |
+| Windows x86_64 | [`lizard.exe`](https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lizard.exe) or [`lz.exe`](https://github.com/surjolive/LIZARD/releases/download/v0.1.0/lz.exe) |
+| Linux x86_64 | See the [latest release](https://github.com/surjolive/LIZARD/releases/latest) |
+| macOS Intel | See the [latest release](https://github.com/surjolive/LIZARD/releases/latest) |
 
 On Linux or macOS, install the latest release with one command:
 
